@@ -7,14 +7,9 @@ public with sharing class SalesforceTokenUtils {
         // Salesforce_Config__mdt config = Salesforce_Config__mdt.getInstance('SalesforceToken	'); // This is hardcoded name for name of the config. We should use Custom Label for the name to make it dynamic
         Salesforce_Config__mdt config = Salesforce_Config__mdt.getInstance(System.Label.SalesforceTokenLabel); // Dynamic
 
-        // https://login.salesforce.com/services/oauth2/authorize?
-        // client_id=3MVG9rZjd7MXFdLiSRIWrHHwo2oc0GdBjrLB7RpPzXJXyppJwBt_zuTnCZytL9qc57mysDKQwxcRhDybemMbb&
-        // redirect_uri=https://www.google.com/&
-        // response_type=code
         if(config != null) {
             String orgUrl = config.Environment__c == 'Production' ? 'https://login.salesforce.com' : 'https://test.salesforce.com';
             System.debug('orgUrlL === ' + orgUrl);
-            // https://orgfarm-8b60f05db0-dev-ed--c.develop.vf.force.com/apex/SalesforceTokenPage
             String redirect_uri = System.URL.getOrgDomainUrl().toExternalForm() + '/apex/' + config.PageName__c;
             System.debug('redirect_uri === ' + redirect_uri);
             String authorizeUrl = orgUrl + config.auth_url__c + '?client_id=' + config.client_id__c + '&redirect_uri=' + redirect_uri + '&response_type=code'; // EncodingUtil.urlDecode(redirect_uri, 'UTF-8')
@@ -27,7 +22,6 @@ public with sharing class SalesforceTokenUtils {
 
 
     public void getAccessToken() {
-        // code=aPrx.ppuB8UlvcFRsMPxTZPoXgM3IjXdh4rcgp0zBfr.tSH0pHhUSRQZquL2ZyUjw8rxgT.EfQ%3D%3D
         String code = ApexPages.CurrentPage().getParameters().get('code');
         System.debug('code === ' + code);
 
@@ -64,16 +58,79 @@ public with sharing class SalesforceTokenUtils {
                             Operations - Class
                             DeployCallback - Interface
                     */
+
+                        // For existing Custom metadata record:
+                    String fullName = 'Salesforce_Config.' + System.Label.SalesforceTokenLabel;
+                    String label = System.Label.SalesforceTokenLabel;
+                
+                        // For new Custom metadata record:
+                    /*
+                    String fullName = 'Salesforce_Config.' + 'Salesforce_Token';
+                    String label = 'Salesforce Token Detail';
+                    */
+                    Map<String, Object> fieldWithValuesMap = new Map<String, Object>();
+                    fieldWithValuesMap.put('access_token__c', wrapper.access_token);
+                    //fieldWithValuesMap.put('expires_in__c');
+                    fieldWithValuesMap.put('expires_in_time__c', System.now().addHours(2));
+                    fieldWithValuesMap.put('instance_url__c', wrapper.instance_url);
+                    fieldWithValuesMap.put('refresh_token__c', wrapper.refresh_token);
+                    fieldWithValuesMap.put('scope__c', wrapper.scope);
+
+                    CreateUpdateMetadataUtils.createUpdateMetadata(fullName, label, fieldWithValuesMap);
+
+                    ApexPages.addMessage(new ApexPages.message(ApexPages.severity.CONFIRM, 'Successfully Authorized and Saved the Token'));
                 }else {
                     // Error
                     System.debug('ERROR \n ' + httpResp.getBody());
+                    ApexPages.addMessage(new ApexPages.message(ApexPages.severity.ERROR, httpResp.getBody() ));
                 }
             } catch (System.CalloutException e) {
+                    ApexPages.addMessage(new ApexPages.message(ApexPages.severity.ERROR, e.getMessage() ));
 
             } catch (System.Exception e) {
+                    ApexPages.addMessage(new ApexPages.message(ApexPages.severity.ERROR, e.getMessage() ));
 
             }
         }
         
+    }
+
+
+    public static Boolean isTokenValid(Salesforce_Config__mdt config) {
+        Boolean isValid = true;
+        if(config.expires_in_time__c < System.now()){
+            isValid = false;
+        }
+        return isValid;
+    }
+
+
+    public static Map<String, Object> refreshToken(Salesforce_Config__mdt config) {
+        String orgUrl = config.Environment__c == 'Production' ? 'https://login.salesforce.com' : 'https://test.salesforce.com';
+        String tokenUrl = orgUrl + config.token_url__c;
+
+        String reqBody = 'grant_type=refresh_token&client_id=' + config.client_id__c + '&client_secret=' + config.client_secret__c + '&refresh_token=' + config.refresh_token__c;
+        System.debug('reqBody for refresh token === ' + reqBody);
+        HttpRequest httpReq = CalloutUtils.prepareRequest(tokenUrl, 'POST', reqBody, 'application/json', 'application/json');
+
+        Map<String, Object> fieldWithValuesMap = new Map<String, Object>();
+        try {
+            HttpResponse httpResp = ( new HTTP() ).send(httpReq);
+                if(httpResp.getStatusCode() == 200) {
+                    
+                    SalesforceTokenWrapper wrapper = SalesforceTokenWrapper.parse(httpResp.getBody());
+                    fieldWithValuesMap.put('access_token__c', wrapper.access_token);
+                    fieldWithValuesMap.put('expires_in_time__c', System.now().addHours(2));
+
+                    //CreateUpdateMetadataUtils.createUpdateMetadata(fullName, label, fieldWithValuesMap);
+                } else {
+                    System.debug('ERROR \n ' + httpResp.getBody());
+                }
+        } catch (System.CalloutException e) {
+            System.debug('CALLOUT ERROR::: \n' + e.getStackTraceString() );
+        } catch (System.Exception e) {
+            System.debug('SYSTEM ERROR::: \n' + e.getStackTraceString() );
+        }
+        return fieldWithValuesMap;
     }
 }

@@ -1,0 +1,17 @@
+public with sharing class CalloutUtils {
+    
+    public static HttpRequest prepareRequest(String endPoint, String method, String body, String accept, String contentType) {
+        HttpRequest httpReq = new HttpRequest();
+        httpReq.setEndpoint(endPoint);
+        httpReq.setMethod(method);
+        httpReq.setHeader('Content-Type', contentType);
+        if(!String.isBlank(body)) {
+        httpReq.setHeader('Accept', accept);
+        }
+        if(!String.isBlank(body)) {
+            httpReq.setBody(body);
+        }
+
+        return httpReq;
+    }
+}
