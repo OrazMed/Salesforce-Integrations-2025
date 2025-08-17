@@ -1,0 +1,51 @@
+<template>
+    <lightning-card title="Metadata Editor" icon-name="custom:custom96">
+        <div class="slds-m-around_medium">
+            <!-- Loading Spinner -->
+            <lightning-spinner if:true={isLoading} alternative-text="Loading..." size="medium"></lightning-spinner>
+
+            <!-- Picklist to display all Metadata Records -->
+            <lightning-combobox
+                    name="metadataType"
+                    label="Select a Metadata Type"
+                    value={selectedMetadataType}
+                    placeholder="--Select a Metadata Type--"
+                    options={metadataTypeOptions}
+                    onchange={handleMetadataTypeChange}>
+        </lightning-combobox>
+
+        <!-- Editable table format -->
+        <template if:true={data}>
+            <div class="slds-m-vertical_medium">
+                <!-- Button to add new -->
+                <lightning-button
+                        label="Add New"
+                        icon-name="utility:add"
+                        onclick={handleAddNewRow}
+                        class="slds-m-bottom_small">
+                </lightning-button>
+
+                <lightning-datatable
+                        key-field="DeveloperName"
+                        data={data}
+                        columns={columns}
+                        onsave={handleSave}
+                        draft-values={draftValues}
+                        hide-checkbox-column>
+                </lightning-datatable>
+            </div>
+
+            <!-- Button to create/update -->
+            <div class="slds-align_absolute-center slds-m-top_medium">
+                <lightning-button
+                        variant="brand"
+                        label="Create/Update Metadata records"
+                        title="Deploys the changes to the org's metadata"
+                        onclick={handleDeploy}
+                        disabled={isLoading}>
+                </lightning-button>
+            </div>
+        </template>
+        </div>
+    </lightning-card>
+</template>
