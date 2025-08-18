@@ -88,7 +88,7 @@ export default class MetadataEditorLWC extends LightningElement {
         try {
             const jobId = await deployMetadataRecords({
                 metadataType: this.selectedMetadataType,
-                recordsJson: JSON.stringify(this.data)
+                recordsJson: JSON.stringify(this.data, null, 2)
             });
             this.showToast('Deployment Started', `Deployment enqueuedwith job ID: ${jobId}. Refresh the page after a moment to see changes.`, 'success');
         } catch (error) {

@@ -1,6 +1,6 @@
 public class MetadataWrapper{
 
-    public records[] records;
+    @AuraEnabled public records[] records;
 
     public class records{
         public String label;

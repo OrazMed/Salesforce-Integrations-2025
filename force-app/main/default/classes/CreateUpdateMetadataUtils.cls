@@ -16,7 +16,7 @@ public class CreateUpdateMetadataUtils implements Metadata.DeployCallback {
         }
     }
 
-    public static void createUpdateMetadata(String fullName, String label, Map<String, Object> fieldWithValuesMap) {
+    public static String createUpdateMetadata(String fullName, String label, Map<String, Object> fieldWithValuesMap) {
         // Setup custom metadata to be created in the subscriber org.
         Metadata.CustomMetadata customMetadata =  new Metadata.CustomMetadata();
         customMetadata.fullName = fullName; // CustomMetadataObjectName.ConfigAPiName = Salesforce_Config.SalesforceToken
@@ -39,21 +39,74 @@ public class CreateUpdateMetadataUtils implements Metadata.DeployCallback {
 
         // Enqueue custom metadata deployment
         Id jobId = Metadata.Operations.enqueueDeployment(mdContainer, callback);
+        return jobId;
     }
 
 
-    @AuraEnabled
+    @AuraEnabled(cacheable=true)
     public static String deployMetadataRecords(String metadataType, String recordsJson) {
-        // List<Map<String, Object>> records = (List<Map<String, Object>>)JSON.deserialize(recordsJson, List<Map<String, Object>>.class);
-        // System.debug('records === ' + records);
-        List<MetadataRecordWrapper> records = (List<MetadataRecordWrapper>)JSON.deserialize(recordsJson, List<MetadataRecordWrapper>.class);
-        Metadata.DeployContainer container = new Metadata.DeployContainer();
+        System.debug('metadataType === ' + metadataType);
+        System.debug('recordsJson === ' + recordsJson);
 
+        // List<MetadataRecordWrapper> records = (List<MetadataRecordWrapper>)JSON.deserialize(recordsJson, List<MetadataRecordWrapper>.class);
+        List<Object> records = (List<Object>)JSON.deserializeUntyped(recordsJson);
+        Metadata.DeployContainer container = new Metadata.DeployContainer();
+        List<String> jobIds = new List<String>();
+        System.debug('records === ' + records);
+
+        for (Object untypedRec : records) {
+            
+            // Step 3: Cast each individual object into a Map. This is safe and reliable.
+            Map<String, Object> recMap = (Map<String, Object>) untypedRec;
+            System.debug('Processing Record Map === ' + recMap);
+
+            // Step 4: Get the required fields from the map.
+            String recordLabel = (String) recMap.get('Label');
+            String recordDevName = (String) recMap.get('DeveloperName');
+
+            // Server-side validation
+            if (String.isBlank(recordLabel)) {
+                throw new AuraHandledException('A record was found with a blank Label. Every record must have a Label.');
+            }
+
+            Metadata.CustomMetadata customMetadata = new Metadata.CustomMetadata();
+            customMetadata.fullName = metadataType + '.' + recordDevName;
+            customMetadata.label = recordLabel;
+
+            // Step 5: DYNAMICALLY loop over all keys in the map to find and add the custom fields.
+            // This is the key to making the component truly generic.
+            for (String fieldName : recMap.keySet()) {
+                
+                // We only process custom fields here. Label and DeveloperName are handled above.
+                if (fieldName.endsWith('__c')) {
+                    Object fieldValue = recMap.get(fieldName);
+                    // The helper method adds the value to the deployment package.
+                    addMetadataValue(customMetadata, fieldName, fieldValue);
+                }
+            }
+            
+            container.addMetadata(customMetadata);
+        }
+
+        /*
         for(MetadataRecordWrapper rec : records) {
+            System.debug('Record details ===> \n ' + rec);
             Metadata.CustomMetadata cusMetadata = new Metadata.CustomMetadata();
             String devName = rec.developerName;
             devName = devName.replaceAll('[^a-zA-Z0-9]', '_');
             cusMetadata.fullName = metadataType + '.' + devName;
+            String fullName = metadataType + '.' + devName;
+            cusMetadata.label = rec.label;
+            String label = rec.label;
+            /*Map<String, Object> fieldWithValuesMap = new Map<String, Object>();
+            fieldWithValuesMap.put('Flag_Emoji__c', rec.flag);
+            fieldWithValuesMap.put('ISO_Alpha_2__c', rec.isoAlpha2);
+            fieldWithValuesMap.put('ISO_alpha_3__c', rec.isoAlpha3);
+            fieldWithValuesMap.put('Currency_Code__c', rec.currencyCode);
+            fieldWithValuesMap.put('Currency_Symbol__c', rec.currencySymbol);
+            fieldWithValuesMap.put('Latitude__c', rec.latitude);
+            fieldWithValuesMap.put('Longitude__c', rec.longitude);
+
             addMetadataValue(cusMetadata, 'Flag_Emoji__c', rec.flag);
             addMetadataValue(cusMetadata, 'ISO_Alpha_2__c', rec.isoAlpha2);
             addMetadataValue(cusMetadata, 'ISO_alpha_3__c', rec.isoAlpha3);
@@ -63,11 +116,13 @@ public class CreateUpdateMetadataUtils implements Metadata.DeployCallback {
             addMetadataValue(cusMetadata, 'Longitude__c', rec.longitude);
             
             container.addMetadata(cusMetadata);
-        }
+            // jobIds.add(createUpdateMetadata(fullName, label,  fieldWithValuesMap));
+        }*/
         
         CreateUpdateMetadataUtils callback = new CreateUpdateMetadataUtils();
         Id jobId = Metadata.Operations.enqueueDeployment(container, callback);
         return jobId;
+        //return jobIds;
     }
 
 
@@ -103,6 +158,49 @@ public class CreateUpdateMetadataUtils implements Metadata.DeployCallback {
         }
 
         Map<String, Object> response = new Map<String, Object>();
+        List<String> fieldNames = new List<String>();
+        List<Map<String, Object>> columns = new List<Map<String, Object>>();
+
+        Map<String, Schema.SObjectField> fieldMap = Schema.getGlobalDescribe().get(metadataType).getDescribe().fields.getMap();
+
+        for(Schema.SObjectField field : fieldMap.values()) {
+            Schema.DescribeFieldResult fieldDescribe = field.getDescribe();
+            String currentFieldName = fieldDescribe.getName();
+            Boolean isEssentialStandardField = currentFieldName.equalsIgnoreCase('Label') || currentFieldName.equalsIgnoreCase('DeveloperName');
+
+            if(fieldDescribe.isAccessible() && (fieldDescribe.isCustom() || isEssentialStandardField)) {
+                fieldNames.add(fieldDescribe.getName());
+
+                Map<String, Object> col = new Map<String, Object>();
+                col.put('label', fieldDescribe.getLabel());
+                col.put('fieldName', fieldDescribe.getName());
+                col.put('type', getDatatableType(fieldDescribe.getType()));
+
+                if(fieldDescribe.getName().equalsIgnoreCase('DeveloperName')) {
+                    col.put('editable', false);
+                    col.put('cellAttributes', new Map<String, Object>{ 'class' => 'slds-theme_shade' });
+                } else {
+                    col.put('editable', true);
+                }
+
+                if(getDatatableType(fieldDescribe.getType()) == 'number') {
+                    col.put('typeAttributes', new Map<String, Object>{ 'step' => '0.00001'});
+                }
+
+                columns.add(col);
+            }
+        }
+
+        if(!fieldNames.isEmpty()) {
+            String query = 'SELECT  ' + String.join(fieldNames, ',') + ' FROM ' + String.escapeSingleQuotes(metadataType);
+            response.put('records', Database.query(query));
+        } else {
+            response.put('records', new List<Object>());
+        }
+        response.put('columns', columns);
+        return response;
+
+        /*Map<String, Object> response = new Map<String, Object>();
         String query = 'SELECT Label, DeveloperName, ISO_alpha_3__c, ISO_alpha_2__c, Currency_Code__c, Currency_Symbol__c, Flag_Emoji__c, Latitude__c, Longitude__c FROM ' + String.escapeSingleQuotes(metadataType);
 
         List<Map<String, Object>> columns = new List<Map<String, Object>>{
@@ -120,7 +218,31 @@ public class CreateUpdateMetadataUtils implements Metadata.DeployCallback {
         response.put('records', Database.query(query));
         response.put('columns', columns);
 
-        return response;
+        return response;*/
+    }
+
+
+    private static String getDatatableType(DisplayType fieldType) {
+        switch on fieldType {
+            when STRING, PICKLIST, TEXTAREA, EMAIL, URL, PHONE {
+                return 'text';
+            }
+            when DOUBLE, INTEGER, CURRENCY, PERCENT {
+                return 'number';
+            }
+            when BOOLEAN {
+                return 'boolean';
+            }
+            when DATE {
+                return 'date-local';
+            }
+            when DATETIME {
+                return 'date';
+            }
+            when else {
+                return 'text';
+            }
+        }
     }
 
 
