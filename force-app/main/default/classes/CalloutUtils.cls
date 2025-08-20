@@ -5,8 +5,8 @@ public with sharing class CalloutUtils {
         httpReq.setEndpoint(endPoint);
         httpReq.setMethod(method);
         httpReq.setHeader('Content-Type', contentType);
-        if(!String.isBlank(body)) {
-        httpReq.setHeader('Accept', accept);
+        if(!String.isBlank(accept)) {
+            httpReq.setHeader('Accept', accept);
         }
         if(!String.isBlank(body)) {
             httpReq.setBody(body);
