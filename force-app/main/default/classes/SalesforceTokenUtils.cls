@@ -8,12 +8,28 @@ public with sharing class SalesforceTokenUtils {
         Salesforce_Config__mdt config = Salesforce_Config__mdt.getInstance(System.Label.SalesforceTokenLabel); // Dynamic
 
         if(config != null) {
+
+            List<String> codeChallengeVerifier = PKCEAuthHelper.getDetails();
+            // codeChallengeVerifier.get(0); code_verifier
+            // codeChallengeVerifier.get(1); code_challenge
+
             String orgUrl = config.Environment__c == 'Production' ? 'https://login.salesforce.com' : 'https://test.salesforce.com';
             System.debug('orgUrlL === ' + orgUrl);
             String redirect_uri = System.URL.getOrgDomainUrl().toExternalForm() + '/apex/' + config.PageName__c;
             System.debug('redirect_uri === ' + redirect_uri);
-            String authorizeUrl = orgUrl + config.auth_url__c + '?client_id=' + config.client_id__c + '&redirect_uri=' + redirect_uri + '&response_type=code'; // EncodingUtil.urlDecode(redirect_uri, 'UTF-8')
+            String authorizeUrl = orgUrl + config.auth_url__c + '?client_id=' + config.client_id__c + '&redirect_uri=' + redirect_uri + '&response_type=code&code_challenge=' + codeChallengeVerifier.get(1); // EncodingUtil.urlDecode(redirect_uri, 'UTF-8')
             System.debug('Authorize URL === ' + authorizeUrl);
+
+            // Before redirecting:
+            //      Insert the Custom Setting / Custom Object
+            PKCE_Helper__c helper = new PKCE_Helper__c();
+            helper.Active__c = true;
+            helper.User__c = UserInfo.getUserId();
+            helper.code_challenge__c = codeChallengeVerifier.get(1);
+            helper.code_verifier__c = codeChallengeVerifier.get(0);
+            insert helper;
+            System.debug('HELPER record created === ' + helper);
+
             return new PageReference(authorizeUrl);
         } else {
             return null;
@@ -28,11 +44,16 @@ public with sharing class SalesforceTokenUtils {
         Salesforce_Config__mdt config = Salesforce_Config__mdt.getInstance(System.Label.SalesforceTokenLabel);
         
         if(config != null) {
+
+            // Get the Custom Setting / Custom Object
+            PKCE_Helper__c helper = [SELECT Id, Name, code_verifier__c FROM PKCE_Helper__c WHERE User__c =: UserInfo.getUserId() AND Active__c = True LIMIT 1];
+            System.debug('HELPER record fetched === ' + helper);
+
             String orgUrl = config.Environment__c == 'Production' ? 'https://login.salesforce.com' : 'https://test.salesforce.com';
             String tokenUrl = orgUrl + config.token_url__c;
             String redirect_uri = System.URL.getOrgDomainUrl().toExternalForm() + '/apex/' + config.PageName__c;
 
-            String reqBody = 'code=' + code + '&grant_type=authorization_code&client_id=' + config.client_id__c + '&client_secret=' + config.client_secret__c + '&redirect_uri=' + redirect_uri;
+            String reqBody = 'code=' + code + '&grant_type=authorization_code&client_id=' + config.client_id__c + '&client_secret=' + config.client_secret__c + '&redirect_uri=' + redirect_uri + '&code_verifier=' + helper.code_verifier__c;
             System.debug('reqBody === ' + reqBody);
 
             HttpRequest httpReq = new HttpRequest();
@@ -79,6 +100,8 @@ public with sharing class SalesforceTokenUtils {
                     CreateUpdateMetadataUtils.createUpdateMetadata(fullName, label, fieldWithValuesMap);
 
                     ApexPages.addMessage(new ApexPages.message(ApexPages.severity.CONFIRM, 'Successfully Authorized and Saved the Token'));
+                    helper.Active__c = false;
+                    update helper;
                 }else {
                     // Error
                     System.debug('ERROR \n ' + httpResp.getBody());
