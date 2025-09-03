@@ -178,6 +178,30 @@ global with sharing class AccountManager {
     }
 
 
+    @httpPatch
+    global static Account updateAccount() {
+        List<Account> accsToUpdate = new List<Account>();
+
+        RestRequest req = RestContext.request;
+        String accId = req.requestURI.substringAfterLast('/');
+        String body = req.requestBody.toString();
+        Map<String, Object> bodyMap = (Map<String, Object>)JSON.deserializeUntyped(body);
+
+        Account acc = new Account(Id = accId);
+        // macc.Id = accId;
+        acc.Name = (String) bodyMap.get('accName');
+        acc.Phone = (String) bodyMap.get('accPhone');
+        acc.Active__c = (String) bodyMap.get('active');
+        acc.Industry = (String) bodyMap.get('industry');
+        acc.AnnualRevenue = (Decimal) bodyMap.get('annualRevenue');
+        
+        accsToUpdate.add(acc);
+        DmlService.doUpdate(accsToUpdate, false);
+
+        return acc;
+    }
+
+
     global class ResponseWrapper {
         global String status;
         global String message;
