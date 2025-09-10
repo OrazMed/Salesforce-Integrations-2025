@@ -134,7 +134,7 @@ public with sharing class SalesforceTokenUtils {
 
         String reqBody = 'grant_type=refresh_token&client_id=' + config.client_id__c + '&client_secret=' + config.client_secret__c + '&refresh_token=' + config.refresh_token__c;
         System.debug('reqBody for refresh token === ' + reqBody);
-        HttpRequest httpReq = CalloutUtils.prepareRequest(tokenUrl, 'POST', reqBody, 'application/json', 'application/json');
+        HttpRequest httpReq = CalloutUtils.prepareRequest(tokenUrl, 'POST', reqBody, 'application/json', 'application/json', '');
 
         Map<String, Object> fieldWithValuesMap = new Map<String, Object>();
         try {

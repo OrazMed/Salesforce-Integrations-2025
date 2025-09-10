@@ -34,7 +34,7 @@ public with sharing class GoogleTokenUtils {
             String reqBody = 'code=' + code + '&grant_type=authorization_code&client_id=' + config.client_id__c + '&client_secret=' + config.client_secret__c + '&redirect_uri=' + redirect_uri;
             System.debug('reqBody === ' + reqBody);
 
-            HttpRequest req = CalloutUtils.prepareRequest(tokenUrl, 'POST', reqBody, '', 'application/x-www-form-urlencoded');
+            HttpRequest req = CalloutUtils.prepareRequest(tokenUrl, 'POST', reqBody, '', 'application/x-www-form-urlencoded', '');
 
             Http http = new Http();
             try {
@@ -89,7 +89,7 @@ public with sharing class GoogleTokenUtils {
             }
 
             String endpoint = 'https://sheets.googleapis.com/v4/spreadsheets';
-            HttpRequest req = CalloutUtils.prepareRequest(endpoint, 'GET', '', 'application/json', 'application/x-www-form-urlencoded');
+            HttpRequest req = CalloutUtils.prepareRequest(endpoint, 'GET', '', 'application/json', 'application/x-www-form-urlencoded', '');
 
             req.setHeader('Authorization', 'Bearer ' + access_token);
             try {
@@ -123,7 +123,7 @@ public with sharing class GoogleTokenUtils {
 
         String reqBody = 'grant_type=refresh_token&client_id=' + config.client_id__c + '&client_secret=' + config.client_secret__c + '&refresh_token=' + config.refresh_token__c;
         System.debug('reqBody for refresh token === ' + reqBody);
-        HttpRequest httpReq = CalloutUtils.prepareRequest(tokenUrl, 'POST', reqBody, '', 'application/x-www-form-urlencoded');
+        HttpRequest httpReq = CalloutUtils.prepareRequest(tokenUrl, 'POST', reqBody, '', 'application/x-www-form-urlencoded', '');
 
         Map<String, Object> fieldWithValuesMap = new Map<String, Object>();
         try {

@@ -26,7 +26,7 @@ public with sharing class AccountUtils {
                                 '    "Active__c": "Yes"'+
                                 '}';
 
-            HttpRequest httpReq = CalloutUtils.prepareRequest(endpoint, 'POST', reqBody, 'application/json', 'application/json');
+            HttpRequest httpReq = CalloutUtils.prepareRequest(endpoint, 'POST', reqBody, 'application/json', 'application/json', '');
             httpReq.setHeader('Authorization', 'Bearer ' + accessToken);
             try {
                 HttpResponse resp = ( new Http() ).send(httpReq);

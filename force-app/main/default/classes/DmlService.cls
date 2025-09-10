@@ -23,7 +23,7 @@ public with sharing class DmlService {
     }
 
 
-    public static List<sObject> doUpdate (List<sObject> records Boolean allOrNone) {
+    public static List<sObject> doUpdate (List<sObject> records, Boolean allOrNone) {
         List<sObject> insertedRecords = new List<sObject>();
         Database.SaveResult[] resultList = Database.update(records, allOrNone);
 
