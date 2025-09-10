@@ -6,6 +6,7 @@ public class ErrorLoggerService {
                                 Id relatedRecId,
                                 String type) {
         if(e == null) {
+            System.debug('Exception is null. Nothing to log.');
             return;
         }
 
