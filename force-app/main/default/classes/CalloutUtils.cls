@@ -1,6 +1,12 @@
 public with sharing class CalloutUtils {
     
-    public static HttpRequest prepareRequest(String endPoint, String method, String body, String accept, String contentType, String accessToken) {
+    public static HttpRequest prepareRequest(String endPoint,
+                                            String method,
+                                            String body,
+                                            String accept,
+                                            String contentType,
+                                            String accessToken) {
+        
         HttpRequest httpReq = new HttpRequest();
         httpReq.setEndpoint(endPoint);
         httpReq.setMethod(method);

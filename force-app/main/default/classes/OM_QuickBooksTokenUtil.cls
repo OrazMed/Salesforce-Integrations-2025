@@ -109,9 +109,9 @@ public with sharing class OM_QuickBooksTokenUtil {
                 ErrorLoggerService.logError(e, 'OM_QuickBooksTokenUtil', 'getAccessToken', null, 'Apex');
             }
         } else {
-        // Show the Error
-        System.debug('ERROR OCCURRED \n' + 'Config not found!');
-        ApexPages.addMessage(new ApexPages.message(ApexPages.severity.WARNING, 'Config not found!' ));
+            // Show the Error
+            System.debug('ERROR OCCURRED \n' + 'Config not found!');
+            ApexPages.addMessage(new ApexPages.message(ApexPages.severity.WARNING, 'Config not found!' ));
         }
     }
 
