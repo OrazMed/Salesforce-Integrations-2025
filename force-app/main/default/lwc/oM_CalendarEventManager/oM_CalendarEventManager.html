@@ -1,0 +1,29 @@
+<template>
+        <lightning-card  title="Create New Event">
+            <!-- Lightning Spinner -->
+            <template if:true={isLoading}>
+                <lightning-spinner alternative-text="Loading..." variant="brand"></lightning-spinner>
+            </template>
+
+            <!-- Input fields -->
+            <lightning-input
+                label="Subject"
+                value={subject}
+                onchange={handleSubjectChange}
+                required
+                class="slds-m-around_small">
+            </lightning-input>
+            
+            <div>
+                <lightning-input type="datetime" name="startDate" label="Start Date and Time" onchange={handleDateChange} value={startDateTime} class="slds-m-around_small"></lightning-input>
+            </div>
+            <div>
+                <lightning-input type="datetime" name="endDate" label="End Date and Time" onchange={handleDateChange} value={endDateTime} class="slds-m-around_small"></lightning-input>
+            </div>
+            
+            <!-- Create Event Button -->
+            <lightning-button variant="brand" label="Create" title="Create Event" onclick={handleCreateEventButton} class="slds-m-left_x-small"></lightning-button>
+
+        </lightning-card>
+    
+</template>
